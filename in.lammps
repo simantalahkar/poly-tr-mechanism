@@ -1,0 +1,413 @@
+#################################################################################################
+## 300K eqlbm and heating for graded polycrystalline graphene mono layer with conductivity calculation##
+#################################################################################################
+
+## Simulation setup
+
+units           metal
+newton          on
+atom_style      atomic
+dimension       3
+boundary        p p p
+
+variable T equal "300"
+variable N equal "50"
+variable Noutput equal "130000"
+variable Nwait equal "0"
+variable Nequilibration equal "100000"
+variable Nrun equal "v_Noutput*v_N + v_Nwait"
+
+variable Ndump1 equal "500"
+variable Ndump2 equal "5000"
+variable Ndump3 equal "5/v_vts"
+variable Ndump4 equal "100/v_vts"
+
+variable vts equal "0.0002"
+
+#variable Nrun equal "8000/v_vts"
+variable heatNrun equal "1000/v_vts"
+variable dT equal "8"
+
+variable vtau equal "0.1"
+
+variable Nevery equal "1000"
+variable Nrepeat equal "v_Nrun/v_Nevery"
+variable Nrepeat0 equal "v_Nequilibration/v_Nevery"
+
+#######################################
+variable vlengthori equal "200"
+variable vNslab equal "floor(v_vlengthori/5)"
+variable vNbath equal "floor(v_vlengthori/25)"
+
+## vlengthori should be such that vNslab is even
+
+## Box and atom creation
+
+read_data	data.pos
+#change_box all triclinic
+
+mass 1 12.0107
+
+################################
+################################
+################################	Define regions
+
+variable tmp equal "(xhi - xlo)/v_vNbath"
+variable vbath equal ${tmp}
+variable tmp equal "(xhi - xlo)/v_vNslab"
+variable vdx equal ${tmp}
+
+variable tmp equal "xlo+v_vbath"
+variable vbathstart equal ${tmp}
+
+variable tmp equal "(xhi + xlo)/2"
+variable vbathend0 equal ${tmp}
+variable tmp equal "v_vbath+(xhi + xlo)/2"
+variable vbathend1 equal ${tmp}
+region rbathstart block EDGE ${vbathstart} EDGE EDGE EDGE EDGE 
+region rbathend block ${vbathend0} ${vbathend1} EDGE EDGE EDGE EDGE 
+#################################
+group gsink region rbathstart
+group gsource region rbathend
+
+######################################
+######################################
+
+## Potential
+
+#kspace_style  none
+pair_style tersoff
+pair_coeff * * BNC.tersoff C
+
+## Simulation setup
+
+neighbor  1 bin
+neigh_modify  every 1 delay 0 check yes
+
+thermo 5000
+thermo_style custom step etotal lx ly lz pe pxx pyy pzz temp cpuremain
+thermo_modify lost warn
+
+
+####################################### Initialization
+velocity all create ${T} 1981654 dist gaussian sum no mom yes rot yes
+
+compute cke all ke/atom
+variable vtemp2 atom 100000*c_cke/(1.5*8.6173)
+
+variable vstep equal "step"
+variable vetotal equal "etotal"
+variable vpe equal "pe"
+variable vke equal "ke"
+variable vlx equal "lx"
+variable vly equal "ly"
+variable vlz equal "lz"
+variable vpxx equal "pxx"
+variable vpyy equal "pyy"
+variable vpzz equal "pzz"
+variable vtemp equal "temp"
+variable vcpuremain equal "cpuremain"
+variable vecouple equal "ecouple"
+variable veconserve equal "econserve"
+
+compute cvacf all vacf
+
+compute   cslabs all chunk/atom bin/1d x lower ${vdx} units box nchunk once ids once
+fix	1 all ave/chunk 1 10000 10000 cslabs v_vtemp2 file tmp0.dat
+
+run 0
+
+unfix 1
+########################################## Minimization and equilibration
+
+fix 1 all box/relax x 0.0 y 0.0
+
+dump  1 all atom ${Ndump1} ./min1.${T}.*.atom
+dump_modify   1 sort id
+
+minimize 0 1.0e-12 5000 5000
+
+undump	1
+
+unfix	1
+
+write_data min1.${T}.data nocoeff
+
+
+
+reset_timestep	0
+timestep 0.00005
+
+dump  1 all atom ${Ndump2} ./eqlbm1.${T}.*.atom
+dump_modify   1 sort id
+
+fix 1 all langevin ${T} ${T} $(400.0*dt) 14658 zero yes
+
+fix 2 all nve
+
+fix 	5 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vcpuremain}" append thermo1.dat
+
+run 100000 
+
+unfix 1
+unfix 2
+unfix 5
+
+undump	1
+
+write_data eqlbm${T}a.data nocoeff
+
+##########################################
+##########################################   LOOP: equilibration  ###########################
+##########################################
+
+reset_timestep	0
+timestep ${vts}
+
+variable seed equal 3654
+
+label loop
+variable n loop 5
+variable breakflag equal 0
+
+variable runseeda equal v_seed+v_n*100+v_n*10+v_n
+
+velocity all create ${T} ${runseeda} dist gaussian sum no mom yes rot yes
+
+run 0
+
+fix 1 all box/relax x 0.0 y 0.0
+
+dump  1 all atom ${Ndump1} ./min2.${n}.${T}.*.atom
+dump_modify   1 sort id
+
+minimize 0 1.0e-12 5000 5000
+
+unfix 1
+undump 1
+
+
+
+dump  1 all atom ${Ndump2} ./eqlbm2.${n}.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vcpuremain}" append thermo2.${n}.dat
+
+variable runseedb equal v_seed*2+v_n*100+v_n*10+v_n
+
+fix 	1 all langevin ${T} ${T} ${vtau} ${runseedb} zero yes
+fix	2 all nve
+
+run 25000
+
+unfix 1
+unfix 2
+undump 1
+unfix 3
+
+if	"(${vpxx} > -100) && (${vpyy} > -100)" then "variable	breakflag equal 1" "jump	SELF break" 		## Set tolerance for minimization	
+
+  
+  
+next	n
+jump 	SELF loop
+
+label	break
+if	"${breakflag} == 1" then "variable	n delete" 
+
+
+########################################################
+########################################################
+########################################################
+
+write_data min${T}b.data nocoeff
+
+########################################################
+########################################################
+########################################################
+########################## longer NVT
+
+reset_timestep	0
+#timestep ${vts}
+
+dump  1 all atom ${Ndump2} ./eqlbm2.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vecouple} ${veconserve} ${vcpuremain}" append thermo2b.dat
+
+fix 	1 all langevin ${T} ${T} ${vtau} 662878 zero yes tally yes
+fix	2 all nve
+
+run 200000
+
+unfix 1
+unfix 2
+undump 1
+unfix 3
+
+
+########################### Pre NVT
+
+variable vvacf1 equal c_cvacf[1]
+variable vvacf2 equal c_cvacf[2]
+variable vvacf3 equal c_cvacf[3]
+variable vvacf4 equal c_cvacf[4]
+
+dump  1 all atom ${Ndump4} ./eqlbm3.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	1 all langevin ${T} ${T} ${vtau} 3851635 zero yes tally yes
+fix	2 all nve
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vvacf1} ${vvacf2} ${vvacf3} ${vvacf4} ${vecouple} ${veconserve} ${vcpuremain}" append thermo2c.dat
+
+
+run 200000
+
+unfix 1
+unfix 2
+#unfix 4
+undump 1
+unfix 3
+#unfix 5
+
+
+write_data eqlbm${T}b.data nocoeff
+
+
+##########################################
+########################################## Heating 
+##########################################
+
+#change_box all boundary f p p
+
+reset_timestep	0
+
+dump	1 all atom ${Ndump3} ./heat1.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	2 all nve
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vvacf1} ${vvacf2} ${vvacf3} ${vvacf4} ${vecouple} ${veconserve} ${vcpuremain}" append thermo3.dat
+
+fix 	fheat gsource langevin ${T} $(v_T+v_dT) ${vtau} 476562 zero no tally yes
+fix 	fcool gsink langevin ${T} $(v_T-v_dT) ${vtau} 876624 zero no tally yes
+
+variable vheat equal "f_fheat"
+variable vcool equal "f_fcool"
+
+fix	ftemp all ave/chunk 1 1000 1000 cslabs v_vtemp2 file tmp1.dat
+
+fix	fp all print 1000 "${vheat} ${vcool} ${vecouple} ${veconserve} ${vlx} ${vly} ${vlz}" file energy1.dat
+
+run ${heatNrun}
+
+unfix 2
+unfix fcool
+unfix fheat
+unfix fp
+
+undump 1
+unfix 3
+unfix ftemp
+
+variable vheat delete
+variable vcool delete
+
+#####################################	Equilibration
+
+dump	1 all atom ${Ndump3} ./heat1.2.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	2 all nve
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vvacf1} ${vvacf2} ${vvacf3} ${vvacf4} ${vecouple} ${veconserve} ${vcpuremain}" append thermo3.2.dat
+
+fix 	fheat gsource langevin $(v_T+v_dT) $(v_T+v_dT) ${vtau} 581451 zero no tally yes
+fix 	fcool gsink langevin $(v_T-v_dT) $(v_T-v_dT) ${vtau} 23186528 zero no tally yes
+
+variable vheat equal "f_fheat"
+variable vcool equal "f_fcool"
+
+fix	ftemp all ave/chunk 1 1000 1000 cslabs v_vtemp2 file tmp1.2.dat
+
+fix	fp all print 1000 "${vheat} ${vcool} ${vecouple} ${veconserve} ${vlx} ${vly} ${vlz}" file energy1.2.dat
+
+
+fix	5 all ave/atom ${Nevery} ${Nrepeat0} ${Nequilibration} v_vtemp2
+
+dump	2 all custom ${Nequilibration} ./heated1.${T}.*.custom id type x y z f_5
+
+run ${Nequilibration}
+
+unfix 2
+unfix fcool
+unfix fheat
+unfix fp
+
+undump 1
+unfix 3
+undump 2
+unfix 5
+unfix ftemp
+
+variable vheat delete
+variable vcool delete
+
+#####################################
+#####################################	Heat flow stability phonon analysis
+
+write_data graded.heat${T}.data nocoeff
+
+reset_timestep 0
+
+dump	1 all atom ${Ndump4} ./heat2.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	2 all nve
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vcpuremain}" append thermo3.dat
+
+fix	4 all phonon ${N} ${Noutput} ${Nwait} map.in heat${T} nasr 100
+
+fix	ftemp all ave/chunk 1 1000 1000 cslabs v_vtemp2 file tmp.dat
+
+
+fix	5 all ave/atom ${Nevery} ${Nrepeat} ${Nrun} v_vtemp2
+
+dump	2 all custom ${Nrun} ./heated.${T}.*.custom id type x y z f_5
+
+fix 	fheat gsource langevin $(v_T+v_dT) $(v_T+v_dT) ${vtau} 97176 zero no tally yes
+fix 	fcool gsink langevin $(v_T-v_dT) $(v_T-v_dT) ${vtau} 71862266 zero no tally yes
+
+variable vheat equal "f_fheat"
+variable vcool equal "f_fcool"
+
+fix	fp all print 1000 "${vheat} ${vcool} ${vecouple} ${veconserve} ${vlx} ${vly} ${vlz}" file energy.dat
+
+run ${Nrun}
+
+write_data final${T}.data nocoeff
+
+unfix 2
+unfix 4
+unfix 5
+undump 1
+undump 2
+unfix 3
+unfix ftemp
+unfix fcool
+unfix fheat
+unfix fp
+
+#############################################################################################
+################################# SIMULATION DONE
+
+print "All done"
+
+
+
+
+
+
+
+
