@@ -1,6 +1,6 @@
-Cite as
+Please Cite:
 
-Lahkar, S., & Ranganathan, R. (2023). Competing mechanisms govern the thermal rectification behavior in semi-stochastic polycrystalline graphene with graded grain-density distribution. arXiv preprint, arXiv:2307.12940.
+Lahkar, S., & Ranganathan, R. (2023). Competing mechanisms govern the thermal rectification behavior in semi-stochastic polycrystalline graphene with graded grain-size distribution. Carbon, 118638.
 
 Report any bugs/issues to simantalahkar@hotmail.com
 
