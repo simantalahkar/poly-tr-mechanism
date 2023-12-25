@@ -2,7 +2,7 @@ Please Cite:
 
 Lahkar, S., & Ranganathan, R. (2023). Competing mechanisms govern the thermal rectification behavior in semi-stochastic polycrystalline graphene with graded grain-size distribution. Carbon, 118638.
 
-Report any bugs/issues to simantalahkar@hotmail.com
+Report any bugs/issues to simantalahkar@hotmail.com / s.lahkar@tue.nl
 
 # Polygraphene-phonon-localization-MD
 This repository contains sample LAMMPS simulation script to generate carry out NEMD conductivity simulations on periodic atomistic graded grain density graphene models and generate the Dynamical matrix useful for phonon calculations, along with the associated Python analysis scripts that uses the outputs from LAMMPS simulation as well as from the "PHANA" package developed by Prof. Lingti Kong (github repository at lingtikong/phana). 
