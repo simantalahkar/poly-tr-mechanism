@@ -1,0 +1,23 @@
+
+
+
+
+xlength is 1238.2832407740382
+ylength is 619.2127296192047
+zlength is 	3.34
+dE/dt is 38.6424708058259 +/- 0.007592851865955557 eV/ps 	
+Heat flux is  2.9936E-21 J/ps.A^2	
+Expected T diff = 160	
+Actual T diff NOT considering bath = 157.7777193707508 	
+Actual T diff considering bath = 158.12169777363135 	
+
+Expected temperature gradient over  1180.14 A is  1.35577E-01 K/A 	
+Actual temperature gradient BETWEEN baths over  1180.14 A is  1.33694E-01 K/A 	
+Actual temperature gradient across bath over  1228.59 A is  1.28702E-01 K/A 	
+
+k from delta T expected is  2.208014E+02 W/m.K	
+k from actual delta T BETWEEN baths is  2.239114E+02 W/m.K	
+k across/including baths is  2.325976E+02 W/m.K
+
+
+
