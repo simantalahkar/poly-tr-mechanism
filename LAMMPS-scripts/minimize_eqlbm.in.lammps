@@ -1,0 +1,205 @@
+#################################################################################################
+## 300K eqlbm and heating for singlecrystalline graphene mono layer with conductivity calculation##
+#################################################################################################
+
+## Simulation setup
+
+units           metal
+newton          on
+atom_style      full
+dimension       3
+boundary        p p p
+
+variable T equal "300"
+
+variable Ndump1 equal "500"
+variable Ndump2 equal "5000"
+variable Ndump3 equal "5/v_vts"
+variable Ndump4 equal "100/v_vts"
+
+variable vts equal "0.0002"
+
+variable vtau equal "0.1"
+
+variable velseed equal "1981654"
+variable vlangseed1 equal "14658"
+variable vlangseed2 equal "662878"
+variable seed equal "3654"		## For Loop's langevin seed creation
+
+## Box and atom creation
+
+read_data	pos.data
+#change_box all triclinic
+
+mass 1 12.0107
+
+## Potential
+
+pair_style tersoff
+pair_coeff * * BNC.tersoff C
+
+## Simulation setup
+
+neighbor  1 bin
+neigh_modify  every 1 delay 0 check yes
+
+thermo 5000
+thermo_style custom step etotal lx ly lz pe pxx pyy pzz temp cpuremain
+thermo_modify lost warn
+
+
+####################################### Initialization
+velocity all create 1 ${velseed} dist gaussian sum no mom yes rot yes
+
+compute cke all ke/atom
+variable vtemp2 atom 100000*c_cke/(1.5*8.6173)
+
+variable vstep equal "step"
+variable vetotal equal "etotal"
+variable vpe equal "pe"
+variable vke equal "ke"
+variable vlx equal "lx"
+variable vly equal "ly"
+variable vlz equal "lz"
+variable vpxx equal "pxx"
+variable vpyy equal "pyy"
+variable vpzz equal "pzz"
+variable vtemp equal "temp"
+variable vcpuremain equal "cpuremain"
+variable vecouple equal "ecouple"
+variable veconserve equal "econserve"
+
+fix 1 all nve
+run 0
+unfix 1
+
+########################################## Minimization and equilibration
+
+fix 1 all box/relax x 0.0 y 0.0
+
+dump  1 all atom ${Ndump1} ./mina.1.*.atom
+dump_modify   1 sort id
+
+minimize 0 1.0e-12 5000 5000
+
+undump	1
+
+unfix	1
+
+write_data mono.min.1.data nocoeff
+
+
+reset_timestep	0
+timestep 0.00005
+
+dump  1 all atom ${Ndump2} ./eqlbm.a${T}.*.atom
+dump_modify   1 sort id
+
+fix 1 all langevin 1 ${T} $(400.0*dt) ${vlangseed1} zero yes
+
+fix 2 all nve
+
+fix 	5 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vcpuremain}" append thermo1.dat
+
+run 100000 
+
+unfix 1
+unfix 2
+unfix 5
+
+undump	1
+
+write_data mono.eqlbm.${T}.data nocoeff
+
+##########################################
+##########################################   LOOP: equilibration  ###########################
+##########################################
+
+reset_timestep	0
+timestep ${vts}
+
+
+label loop
+variable n loop 5
+variable breakflag equal 0
+
+#####	Minimization
+
+fix 1 all box/relax x 0.0 y 0.0
+
+dump  1 all atom ${Ndump1} ./min2.${n}.${T}.*.atom
+dump_modify   1 sort id
+
+minimize 0 1.0e-12 5000 5000
+
+unfix 1
+undump 1
+
+#####	NVT
+
+dump  1 all atom ${Ndump2} ./eqlbm2.${n}.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vcpuremain}" append thermo2.${n}.dat
+
+variable runseedb equal v_seed*2+v_n*100+v_n*10+v_n
+
+fix 	1 all langevin ${T} ${T} ${vtau} ${runseedb} zero yes
+fix	2 all nve
+
+run 25000
+
+unfix 1
+unfix 2
+undump 1
+unfix 3
+
+if	"(${vpxx} > -100) && (${vpyy} > -100)" then "variable	breakflag equal 1" "jump	SELF break" 		## Set tolerance for minimization	
+
+  
+next	n
+jump 	SELF loop
+
+label	break
+if	"${breakflag} == 1" then "variable	n delete" 
+
+
+########################################################
+########################################################
+########################################################
+
+write_data mono.min.b${T}.data nocoeff
+
+########################## Longer NVT
+
+reset_timestep	0
+
+dump  1 all atom ${Ndump2} ./eqlbm.b${T}.*.atom
+dump_modify   1 sort id
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vecouple} ${veconserve} ${vcpuremain}" append thermo2b.dat
+
+fix 	1 all langevin ${T} ${T} ${vtau} ${vlangseed2} zero yes tally yes
+fix	2 all nve
+
+run 200000
+
+unfix 1
+unfix 2
+undump 1
+unfix 3
+
+write_data eqlbm.c${T}.data nocoeff
+
+#############################################################################################
+################################# SIMULATION DONE
+
+print "All done"
+
+
+
+
+
+
+
+
