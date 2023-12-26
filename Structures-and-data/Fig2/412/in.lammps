@@ -1,0 +1,260 @@
+#################################################################################################
+## 300K eqlbm and heating for singlecrystalline graphene mono layer with conductivity calculation##
+#################################################################################################
+
+## Simulation setup
+
+units           metal
+newton          on
+atom_style      atomic
+dimension       3
+boundary        f p p
+
+variable T equal "300"
+#variable N equal "50"
+#variable Noutput equal "150000"
+#variable Nwait equal "50000"
+
+variable Ndump1 equal "500"
+variable Ndump2 equal "5000"
+variable Ndump3 equal "5/v_vts"
+variable Ndump4 equal "100/v_vts"
+
+variable vts equal "0.0002"
+
+variable Nrun equal "2000/v_vts"
+variable heatNrun equal "500/v_vts"
+variable dT equal "67"
+
+variable vtau equal "0.1"
+
+variable Nevery equal "1000"
+variable Nrepeat equal "v_Nrun/v_Nevery"
+
+#######################################
+variable vlengthori equal "1025"
+variable vNslab equal "v_vlengthori/5"
+variable vNbath equal "v_vlengthori/25"
+
+## Box and atom creation
+
+read_data	data.pos
+#change_box all triclinic
+
+mass 1 12.0107
+
+################################	Define regions
+
+variable tmp equal "(xhi - xlo)/v_vNbath"
+variable vbath equal ${tmp}
+variable tmp equal "(xhi - xlo)/v_vNslab"
+variable vdx equal ${tmp}
+variable vfixed equal ${vdx}
+
+variable tmp equal "xlo+v_vfixed"
+variable vlowfixed equal ${tmp}
+variable tmp equal "xhi-v_vfixed"
+variable vhighfixed equal ${tmp}
+
+region rlowfixed block EDGE ${vlowfixed} EDGE EDGE EDGE EDGE 
+group glowfixed region rlowfixed
+region rhighfixed block ${vhighfixed} EDGE EDGE EDGE EDGE EDGE 
+group ghighfixed region rhighfixed
+
+group gfixed union glowfixed ghighfixed 
+group glowfixed delete
+group ghighfixed delete
+
+variable tmp equal "v_vlowfixed+v_vbath"
+variable vbathstart equal ${tmp}
+variable tmp equal "v_vhighfixed-v_vbath"
+variable vbathend equal ${tmp}
+region rbathstart block ${vlowfixed} ${vbathstart} EDGE EDGE EDGE EDGE 
+region rbathend block ${vbathend} ${vhighfixed} EDGE EDGE EDGE EDGE 
+#################################
+group gsink region rbathstart
+group gsource region rbathend
+
+######################################
+######################################
+
+## Potential
+
+#kspace_style  none
+pair_style tersoff
+pair_coeff * * BNC.tersoff C
+
+## Simulation setup
+
+neighbor  1 bin
+neigh_modify  every 1 delay 0 check yes
+
+thermo 5000
+thermo_style custom step etotal lx ly lz pe pxx pyy pzz temp cpuremain
+thermo_modify lost warn
+
+
+####################################### Initialization
+velocity all create ${T} 897263496 dist gaussian sum no mom yes rot yes
+
+compute cke all ke/atom
+variable vtemp2 atom 100000*c_cke/(1.5*8.6173)
+
+variable vstep equal "step"
+variable vetotal equal "etotal"
+variable vpe equal "pe"
+variable vke equal "ke"
+variable vlx equal "lx"
+variable vly equal "ly"
+variable vlz equal "lz"
+variable vpxx equal "pxx"
+variable vpyy equal "pyy"
+variable vpzz equal "pzz"
+variable vtemp equal "temp"
+variable vcpuremain equal "cpuremain"
+variable vecouple equal "ecouple"
+variable veconserve equal "econserve"
+
+compute cvacf all vacf
+
+compute   cslabs all chunk/atom bin/1d x lower ${vdx} units box nchunk once ids once
+fix	1 all ave/chunk 1 10000 10000 cslabs v_vtemp2 file tmp0.dat
+
+run 0
+
+unfix 1
+########################################################
+########################################################
+########################################################
+########################## Repeat NVT
+
+reset_timestep	0
+timestep ${vts}
+
+dump  1 all atom ${Ndump2} ./eqlbm2.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vecouple} ${veconserve} ${vcpuremain}" append thermo2b.dat
+
+fix 	1 all langevin ${T} ${T} ${vtau} 662878 zero yes tally yes
+fix	2 all nve
+
+run 200000
+
+unfix 1
+unfix 2
+undump 1
+unfix 3
+
+write_data eqlbm${T}b.data nocoeff
+
+
+##########################################
+########################################## Heating 
+##########################################
+
+#change_box all boundary f p p
+
+reset_timestep	0
+#timestep ${vts}
+
+velocity gfixed set 0.0 0.0 0.0
+fix freeze gfixed setforce 0.0 0.0 0.0
+
+variable vvacf1 equal c_cvacf[1]
+variable vvacf2 equal c_cvacf[2]
+variable vvacf3 equal c_cvacf[3]
+variable vvacf4 equal c_cvacf[4]
+
+dump	1 all atom ${Ndump3} ./heat1.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	2 all nve
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vvacf1} ${vvacf2} ${vvacf3} ${vvacf4} ${vecouple} ${veconserve} ${vcpuremain}" append thermo3.dat
+
+#fix	4 all phonon ${N} ${Noutput} ${Nwait} map.in heat${T} nasr 100
+
+fix 	fheat gsource langevin ${T} $(v_T+v_dT) ${vtau} 476562 zero no tally yes
+fix 	fcool gsink langevin ${T} $(v_T-v_dT) ${vtau} 876624 zero no tally yes
+
+variable vheat equal "f_fheat"
+variable vcool equal "f_fcool"
+
+fix	ftemp all ave/chunk 1 1000 1000 cslabs v_vtemp2 file tmp1.dat
+
+fix	fp all print 1000 "${vheat} ${vcool} ${vecouple} ${veconserve} ${vlx} ${vly} ${vlz}" file energy1.dat
+
+run ${heatNrun}
+
+unfix 2
+unfix fcool
+unfix fheat
+unfix fp
+#unfix 4
+undump 1
+unfix 3
+unfix ftemp
+
+variable vheat delete
+variable vcool delete
+
+#####################################
+#####################################	Heat flow stability
+
+write_data mono.heat${T}.data nocoeff
+
+reset_timestep 0
+
+dump	1 all atom ${Ndump4} ./heat2.${T}.*.atom
+dump_modify   1 sort id
+
+fix 	2 all nve
+
+fix 	3 all print 1000 "${vstep} ${vetotal} ${vpe} ${vke} ${vlx} ${vly} ${vlz} ${vpxx} ${vpyy} ${vpzz} ${vtemp} ${vvacf1} ${vvacf2} ${vvacf3} ${vvacf4} ${vecouple} ${veconserve} ${vcpuremain}" append thermo4.dat
+
+#fix	4 all phonon ${N} ${Noutput} ${Nwait} map.in heat${T} nasr 100
+
+fix	5 all ave/atom ${Nevery} ${Nrepeat} ${Nrun} v_vtemp2
+
+dump	2 all custom ${Nrun} ./heated.${T}.*.custom id type x y z f_5
+
+fix 	fheat gsource langevin $(v_T+v_dT) $(v_T+v_dT) ${vtau} 97176 zero no tally yes
+fix 	fcool gsink langevin $(v_T-v_dT) $(v_T-v_dT) ${vtau} 71862266 zero no tally yes
+
+variable vheat equal "f_fheat"
+variable vcool equal "f_fcool"
+
+fix	fp all print 1000 "${vheat} ${vcool} ${vecouple} ${veconserve} ${vlx} ${vly} ${vlz}" file energy.dat
+
+fix	ftemp all ave/chunk 1 1000 1000 cslabs v_vtemp2 file tmp.dat
+
+run ${Nrun}
+
+
+write_data final${T}.data nocoeff
+
+unfix 2
+unfix fcool
+unfix fheat
+unfix fp
+#unfix 4
+undump 1
+unfix 3
+unfix 5
+unfix ftemp
+
+
+
+#############################################################################################
+################################# SIMULATION DONE
+
+print "All done"
+
+
+
+
+
+
+
+

@@ -1,0 +1,29 @@
+
+
+
+
+xlength is 1099.6199951000015
+ylength is 415.5133056999992
+zlength is 	3.34
+dE/dt is 7.224514569480395 +/- 0.002961427939547712 eV/ps 	
+
+Heat flux is  8.3404E-22 +/-  3.4189E-25 J/ps.A^2 ( 4.0991E-02% error)	
+ meanTaveragestd =  4.69602E+00 K
+ maxTaveragestd =  5.66636E+00 K	
+ Percent meanTaveragestd = 1.6305613444791844 %
+ Percent maxTaveragestd =1.9674868485657733 %	
+
+Expected T diff = 288	
+Actual T diff NOT considering bath = 143.3639673333331 	
+Actual T diff considering bath = 143.5699446666673 	
+
+Expected temperature gradient over  1039.60 A is  2.77030E-01 K/A 	
+Actual temperature gradient BETWEEN baths over  1039.60 A is  1.37903E-01 K/A 	
+Actual temperature gradient across bath over  1089.62 A is  1.31762E-01 K/A 	
+
+k from delta T expected is  3.000000E+00 W/m.K	
+k from actual delta T BETWEEN baths is  6.048026E+01 W/m.K	
+k across/including baths is  6.329914E+01 W/m.K
+
+
+
