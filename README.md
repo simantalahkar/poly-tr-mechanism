@@ -5,7 +5,7 @@ Lahkar, S., & Ranganathan, R. (2023). Competing mechanisms govern the thermal re
 Report any bugs/issues to simantalahkar@hotmail.com / s.lahkar@tue.nl
 
 # Graded-Polygraphene-Thermal-Rectification-Competing-Mechanisms
-![Fig 1. Interplay between TR mechanisms identified in through this work](mechanisms3.jpg)
+![Fig 1. Interplay between TR mechanisms identified in through this work](mechanisms3.png)
 This repository contains sample LAMMPS simulation script to generate carry out NEMD conductivity simulations on periodic atomistic graded grain density graphene models and generate the Dynamical matrix useful for phonon calculations, along with the associated Python analysis scripts that uses the outputs from LAMMPS simulation as well as from the "PHANA" package developed by Prof. Lingti Kong (github repository at lingtikong/phana). 
 
 After running the LAMMPS simulation using the structure and map files created using the latgen tool (input script: in.lammps):
