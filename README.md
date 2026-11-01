@@ -5,11 +5,23 @@ Lahkar, S., & Ranganathan, R. (2024). Competing mechanisms govern the thermal re
 Report any bugs/issues to simantalahkar@hotmail.com
 
 # Graded-Polygraphene-Thermal-Rectification-Competing-Mechanisms
+
+> **Status:** research code written for the paper (2023), kept as published so the results can be reproduced; not under active development.
+
 This repository contains the LAMMPS and python scripts, along with the most important data, that I created to carry out a thorough analysis of the Thermal Rectification (TR) phenomenon in semi-stochastically generated atomistic models of polycrystalline graphene having graded variation of grain sizes - using Molecular Dynamics simulations and phonon calculations based on implementation of the dissipation fluctuation theory. 
 ![Fig 1. Interplay between TR mechanisms identified in this work](mechanisms3.png)
 **Fig 1.** *Possible Interplay between TR mechanisms as identified by us.*
 
 These files have been provided with the intention that the reader is able to reproduce all the main results of our study. Below you will find a set of instructions to use these scripts and data as intended. The BNC.tersoff file contains the potential parameters.
+
+## Requirements
+
+- LAMMPS with the MANYBODY package (Tersoff potential) and the PHONON package (`fix phonon`)
+- Python 3 with NumPy, SciPy and Matplotlib
+- [PHANA](https://github.com/lingtikong/phana) to compute the phonon eigenvectors (`eigvec.dat`) from the dynamical-matrix output
+- Optional: OVITO, to view the structures and per-atom data
+
+## Instructions
 
 1. The LAMMPS-scripts folder contains all the scripts for various molecular dynamics simulations on the graphene structures:
     - eqlbm_phonon.in.lammps does looped-minimization and NVT equilibration and generates the dynamical matrix during equilibration. *Note that this is done on periodic structures*
