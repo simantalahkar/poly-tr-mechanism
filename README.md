@@ -1,8 +1,8 @@
 Please Cite:
 
-Lahkar, S., & Ranganathan, R. (2023). Competing mechanisms govern the thermal rectification behavior in semi-stochastic polycrystalline graphene with graded grain-size distribution. *Carbon*, 118638.
+Lahkar, S., & Ranganathan, R. (2024). Competing mechanisms govern the thermal rectification behavior in semi-stochastic polycrystalline graphene with graded grain-size distribution. *Carbon*, 218, 118638. https://doi.org/10.1016/j.carbon.2023.118638
 
-Report any bugs/issues to simantalahkar@hotmail.com / s.lahkar@tue.nl
+Report any bugs/issues to simantalahkar@hotmail.com
 
 # Graded-Polygraphene-Thermal-Rectification-Competing-Mechanisms
 This repository contains the LAMMPS and python scripts, along with the most important data, that I created to carry out a thorough analysis of the Thermal Rectification (TR) phenomenon in semi-stochastically generated atomistic models of polycrystalline graphene having graded variation of grain sizes - using Molecular Dynamics simulations and phonon calculations based on implementation of the dissipation fluctuation theory. 
@@ -24,4 +24,4 @@ These files have been provided with the intention that the reader is able to rep
     - interprete_phonon_data.py does statistical interpretation of the output data from running the spatial_phonon_data.py script and also plots the participation ratio for the phonon eigen values.
     - mechanism3.py plots a graphical representation of the strengths of the two interacting mechanisms of TR based on one possible inferred relationship of the respective mechanisms to the structural parameters - length and grain size asymmetry.
 
-3. The Structures-and-data folder contains all the main structures and output data obtained in this studied (grouped as per the corresponding Figures in our associated published paper-see Lahkar, S., & Ranganathan, R. (2023), *Carbon*, 118638) that can be used for reproduction of the results, and for comparative reference.
+3. The Structures-and-data folder contains all the main structures and output data obtained in this studied (grouped as per the corresponding Figures in our associated published paper-see Lahkar, S., & Ranganathan, R. (2024), *Carbon*, 218, 118638) that can be used for reproduction of the results, and for comparative reference.
